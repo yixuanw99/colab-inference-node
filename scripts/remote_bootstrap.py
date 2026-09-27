@@ -75,13 +75,27 @@ def main() -> None:
         start_cmd = f"cd {station_dir} && bash engine.sh diffusers start --model '{model}' --precision '{precision}'"
         run(start_cmd)
         run(f"cd {station_dir} && tailscale serve --bg --tcp 8000 8000 || true")
+        port = 8000
     elif engine == "comfyui":
         run(f"cd {station_dir} && bash engine.sh comfyui start")
         run(f"cd {station_dir} && tailscale serve --bg --tcp 8188 8188 || true")
+        port = 8188
+    elif engine == "vllm":
+        run(f"cd {station_dir} && bash engine.sh vllm start --model '{model}'")
+        run(f"cd {station_dir} && tailscale serve --bg --tcp 8000 8000 || true")
+        port = 8000
+    elif engine == "ollama":
+        run(f"cd {station_dir} && bash engine.sh ollama start")
+        if model:
+            run(f"cd {station_dir} && bash engine.sh ollama pull '{model}'")
+        run(f"cd {station_dir} && tailscale serve --bg --tcp 11434 11434 || true")
+        port = 11434
+    else:
+        log(f"Unknown engine: {engine}")
+        port = 8000
 
     # 6. Start Compute Unit Watchdog
-    log(f"Starting Idle Watchdog (Timeout: {idle_timeout}s)...")
-    port = 8000 if engine == "diffusers" else 8188
+    log(f"Starting Idle Watchdog (Port: {port}, Timeout: {idle_timeout}s)...")
     run(f"cd {station_dir} && bash engine.sh watchdog start --port {port} --timeout {idle_timeout}")
 
     # 7. Print System Status

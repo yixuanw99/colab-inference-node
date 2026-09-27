@@ -170,7 +170,7 @@ def main():
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     deploy_p = subparsers.add_parser("deploy", help="Provision and deploy engine on Colab VM")
-    deploy_p.add_argument("--engine", choices=["diffusers", "comfyui"], default=None)
+    deploy_p.add_argument("--engine", choices=["diffusers", "comfyui", "vllm", "ollama"], default=None)
     deploy_p.add_argument("--model", default=None, help="Target model repository ID")
     deploy_p.add_argument("--precision", choices=["fp8", "fp16", "bf16", "auto"], default=None)
     deploy_p.set_defaults(func=cmd_deploy)

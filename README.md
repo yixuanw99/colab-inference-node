@@ -2,7 +2,11 @@
 
 An automated, reproducible remote inference and orchestration infrastructure for Google Colab GPU runtimes.
 
-Designed to serve arbitrary deep learning models—with primary focus on diffusion models including **FLUX.1 (schnell/dev)**, **FLUX.2**, and **Stable Diffusion XL (SDXL)**—with dynamic **LoRA** hot-swapping over encrypted **Tailscale Userspace Mesh** or ephemeral **Cloudflare Tunnels**.
+Serves arbitrary deep learning models across multiple modalities:
+- **Diffusion & Vision**: **FLUX.1 (schnell/dev)**, **SDXL**, dynamic **LoRA** hot-swapping, and **ComfyUI**.
+- **Large Language Models (LLM)**: **vLLM** (PagedAttention, AWQ, OpenAI-compatible) and **Ollama** (lightweight GGUF).
+- **Extensible Modality Contracts**: First-class interfaces for **VLM** (Qwen2-VL), **Audio AI** (Faster-Whisper, F5-TTS), **Embeddings** (BGE-M3), and **Video** (Wan2.1).
+- **Tri-Networking Ingress**: **Tailscale Userspace Mesh**, **Cloudflare Public Tunnels**, and **VS Code Remote Tunnels**.
 
 ---
 
@@ -11,63 +15,77 @@ Designed to serve arbitrary deep learning models—with primary focus on diffusi
 ```mermaid
 flowchart TD
     subgraph LocalWorkstation["Local Workstation (macOS / Linux / WSL)"]
-        LocalCLI["./station.sh deploy | status | generate | benchmark"]
+        LocalCLI["./station.sh deploy | chat | generate | token-bench | benchmark"]
         Orchestrator["tools/station_ctl.py (Google Colab CLI)"]
-        Client["tools/generate.py (Inference Client)"]
+        ChatClient["tools/chat.py (Streaming LLM Shell)"]
+        GenClient["tools/generate.py (Diffusion CLI)"]
+        OpenCodeConfig["templates/opencode.json (IDE Provider)"]
+
         LocalCLI --> Orchestrator
-        LocalCLI --> Client
+        LocalCLI --> ChatClient
+        LocalCLI --> GenClient
     end
 
-    subgraph MeshNetwork["Tailscale Mesh (WireGuard Userspace)"]
-        TS_Mesh["Tailnet Encrypted Direct Link"]
+    subgraph IngressLayer["Networking & Tunnels"]
+        TS_Mesh["Tailscale Mesh (WireGuard Userspace)"]
+        CF_Tunnel["Cloudflare Public HTTPS"]
+        VS_Tunnel["VS Code Remote Tunnel (vscode.dev)"]
     end
 
     subgraph ColabVM["Google Colab GPU Runtime (/content/colab-inference-node)"]
-        Controller["engine.sh (Lifecycle Supervisor)"]
+        Controller["engine.sh (Unified Master CLI)"]
         Watchdog["scripts/idle_watchdog.py (Compute Unit Guardian)"]
         
         subgraph Engines["Inference Engines"]
-            DiffusersEngine["FastAPI + Diffusers (Port 8000)"]
+            DiffusersEngine["Diffusers FastAPI (Port 8000)"]
             ComfyEngine["ComfyUI Headless (Port 8188)"]
+            VLLMEngine["vLLM Engine (Port 8000)"]
+            OllamaEngine["Ollama Engine (Port 11434)"]
         end
         
-        subgraph StorageCache["Storage & Weight Management"]
-            HFCache["HF Transfer Cache (/content/cache)"]
-            LoRARegistry["LoRA Store (/content/models/loras)"]
+        subgraph ExtensibleStubs["Future Modality Interfaces"]
+            VLMEngine["VLM (Qwen2-VL / Florence-2)"]
+            AudioEngine["Audio (Whisper / F5-TTS)"]
+            EmbeddingEngine["Embedding (BGE-M3 / TEI)"]
+            VideoEngine["Video (Wan2.1 / CogVideoX)"]
         end
 
         Controller --> Engines
-        Engines --> StorageCache
+        Controller --> ExtensibleStubs
         Watchdog -->|Idle > 30m| Teardown["google.colab.runtime.unassign()"]
     end
 
     Orchestrator -->|colab exec| Controller
-    Client -->|HTTP / WebSocket via TS_Mesh| Engines
+    ChatClient -->|HTTP / SSE via IngressLayer| Engines
+    GenClient -->|HTTP / JSON via IngressLayer| Engines
 ```
 
 ---
 
 ## 2. Key Features
 
-- **Arbitrary Model Serving**: Modular engine architecture supporting both Hugging Face Diffusers pipelines and ComfyUI headless node graphs.
+- **Multi-Engine Unification**: Run vLLM, Ollama, Diffusers, or ComfyUI headlessly through a single CLI controller [`engine.sh`](file:///content/colab-inference-node/engine.sh).
 - **FLUX.1 & LoRA Hot-Swapping**: Native dynamic adapter loading, weight scaling, and unloading without reallocating base transformer pipelines.
 - **Hardware-Aware Memory Optimization**: Automatic FP8 quantization and CPU offload strategy selection based on detected GPU VRAM (Tesla T4, NVIDIA L4, NVIDIA A100).
 - **Accelerated Caching**: Native `hf_transfer` integration for high-speed weights prefetching; transparent Google Drive persistent caching when mounted.
 - **Zero-Browser Headless CLI**: Automated remote provisioning, status checks, and teardown from local workstations using `google-colab-cli`.
+- **VS Code Remote Tunnel**: Full desktop or web-based IDE connectivity (`https://vscode.dev/tunnel/<name>`) with credentials saved to Google Drive.
 - **Compute Unit Protection**: Integrated background watchdog automatically terminates Colab instances when idle, preventing credit drain.
 
 ---
 
-## 3. Hardware & Quantization Matrix
+## 3. Hardware & Model Allocation Matrix
 
-| GPU Hardware | VRAM | Recommended Engine | Target Model | Precision | Offloading Strategy | Estimated Latency |
+| GPU Hardware | VRAM | Engine | Target Model | Precision / Format | Offload Mode | Primary Workload |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **NVIDIA T4** | 15 GB | **Diffusers** | `black-forest-labs/FLUX.1-schnell` | FP8 | Sequential Offload | ~35s - 50s (4 steps) |
-| **NVIDIA T4** | 15 GB | **Diffusers** | `stabilityai/stable-diffusion-xl-base-1.0` | FP16 | Model Offload | ~12s - 18s (30 steps) |
-| **NVIDIA L4** | 24 GB | **Diffusers** | `black-forest-labs/FLUX.1-schnell` | FP8 | Model Offload | ~12s - 18s (4 steps) |
-| **NVIDIA L4** | 24 GB | **Diffusers** | `black-forest-labs/FLUX.1-dev` | FP8 | Model Offload | ~45s - 65s (28 steps) |
-| **NVIDIA A100** | 40 / 80 GB | **Diffusers** | `black-forest-labs/FLUX.1-schnell` | BF16 | None (Full VRAM) | ~4s - 8s (4 steps) |
-| **NVIDIA A100** | 40 / 80 GB | **Diffusers** | `black-forest-labs/FLUX.1-dev` | BF16 | None (Full VRAM) | ~15s - 25s (28 steps) |
+| **NVIDIA T4** | 15 GB | **Ollama** | `qwen2.5-coder:7b` | GGUF Q4_K_M | Full VRAM | Lightweight code assistance |
+| **NVIDIA T4** | 15 GB | **Diffusers** | `black-forest-labs/FLUX.1-schnell` | FP8 | Sequential Offload | 4-step diffusion generation |
+| **NVIDIA T4** | 15 GB | **Diffusers** | `stabilityai/stable-diffusion-xl-base-1.0` | FP16 | Model Offload | SDXL latent diffusion |
+| **NVIDIA L4** | 24 GB | **Ollama** | `qwen2.5-coder:32b` | GGUF Q4_K_M | Full VRAM | Advanced IDE coding |
+| **NVIDIA L4** | 24 GB | **vLLM** | `Qwen/Qwen2.5-Coder-14B-Instruct-AWQ` | 4-bit AWQ | Full VRAM | High-throughput concurrent serving |
+| **NVIDIA L4** | 24 GB | **Diffusers** | `black-forest-labs/FLUX.1-schnell` | FP8 | Model Offload | Fast FLUX generation (~15s) |
+| **NVIDIA A100** | 40 / 80 GB | **vLLM** | `deepseek-ai/DeepSeek-R1-Distill-Qwen-32B` | bfloat16 | Full VRAM | Unquantized reasoning serving |
+| **NVIDIA A100** | 40 / 80 GB | **Diffusers** | `black-forest-labs/FLUX.1-schnell` | BF16 | Full VRAM | Native unquantized FLUX (~5s) |
 
 ---
 
@@ -77,33 +95,35 @@ flowchart TD
 1. Install `google-colab-cli`:
    ```bash
    pip install google-colab-cli
-   # Authenticate with Google
    colab --auth=oauth2 usage
    ```
 2. Configure local environment variables in `.env`:
    ```bash
    cp .env.example .env
-   # Edit .env and supply your TAILSCALE_AUTHKEY
+   # Supply TAILSCALE_AUTHKEY in .env
    ```
 
-### Commands
+### Local Commands
 ```bash
-# Deploy remote engine to Colab VM headlessly
+# Deploy remote engine headlessly
 ./station.sh deploy --engine diffusers --model black-forest-labs/FLUX.1-schnell --precision fp8
+# Or deploy LLM:
+./station.sh deploy --engine vllm --model Qwen/Qwen2.5-Coder-7B-Instruct-AWQ
 
-# Inspect remote status and GPU utilization
+# Check remote status
 ./station.sh status
 
-# Generate an image over Tailscale mesh
-./station.sh generate --prompt "A futuristic model station on an alien planet" --output test.png
+# Interactive LLM Chat
+./station.sh chat --endpoint http://colab-model-station:8000 --model Qwen/Qwen2.5-Coder-7B-Instruct-AWQ
 
-# Attach and scale a dynamic LoRA
-./station.sh generate --prompt "Portrait in cyberpunk style" --lora "XLabs-AI/flux-RealismLora" --lora-weight 0.85
+# Generate Image via Diffusion Engine
+./station.sh generate --prompt "A futuristic model station on Mars" --output mars.png
 
-# Execute performance and throughput benchmark
+# Benchmarks
+./station.sh token-bench --endpoint http://colab-model-station:8000
 ./station.sh benchmark --steps 4 --iterations 3
 
-# Stop Colab VM and release compute units
+# Terminate Colab VM
 ./station.sh stop
 ```
 
@@ -111,75 +131,33 @@ flowchart TD
 
 ## 5. Colab Master CLI Operations (`engine.sh`)
 
-When working directly inside Google Colab:
+When operating directly inside Google Colab terminal:
 
 ```bash
-# 1. Environment bootstrap
-bash engine.sh setup all
+# 1. Dependency Bootstrap
+bash engine.sh setup [diffusers|ollama|vllm|comfyui|tunnels|all]
 
-# 2. Start Diffusers server daemon (Port 8000)
+# 2. Diffusion Engines
 bash engine.sh diffusers start --model "black-forest-labs/FLUX.1-schnell" --precision fp8
-bash engine.sh diffusers status
-bash engine.sh diffusers logs -f
+bash engine.sh diffusers stop
+bash engine.sh comfyui start
+bash engine.sh comfyui stop
 
-# 3. Tailscale Userspace mesh networking
+# 3. LLM Engines
+bash engine.sh vllm start --model "Qwen/Qwen2.5-Coder-7B-Instruct-AWQ"
+bash engine.sh vllm stop
+bash engine.sh ollama start
+bash engine.sh ollama pull qwen2.5-coder:7b
+bash engine.sh ollama stop
+
+# 4. Ingress & Remote IDE Tunnels
 bash engine.sh tunnel tailscale up "$TAILSCALE_AUTHKEY"
 bash engine.sh tunnel tailscale serve 8000
-
-# 4. Optional Cloudflare public tunnel
 bash engine.sh tunnel cloudflare up 8000
+bash engine.sh tunnel vscode start "colab-model-station"
 
-# 5. Start Idle Watchdog (30 minute timeout)
+# 5. Compute Protection & Teardown
 bash engine.sh watchdog start --timeout 1800
-
-# 6. Full system teardown & runtime unassignment
+bash engine.sh status
 bash engine.sh teardown
 ```
-
----
-
-## 6. API Reference (Diffusers Engine)
-
-### `GET /health`
-Returns runtime status, GPU device properties, VRAM allocation, and idle seconds.
-
-### `POST /v1/images/generations`
-Generate images from text prompts.
-```json
-{
-  "prompt": "Cinematic photography of a mountain lake at dawn",
-  "num_inference_steps": 4,
-  "guidance_scale": 0.0,
-  "width": 1024,
-  "height": 1024,
-  "seed": 42,
-  "loras": [
-    {
-      "adapter_name": "realism",
-      "weight": 0.85
-    }
-  ],
-  "return_base64": true
-}
-```
-
-### `POST /v1/loras/load`
-Dynamically attach a LoRA adapter.
-```json
-{
-  "lora_id_or_path": "XLabs-AI/flux-RealismLora",
-  "adapter_name": "realism",
-  "weight": 0.85
-}
-```
-
-### `POST /v1/loras/unload`
-Detach a LoRA adapter and release CUDA memory.
-```json
-{
-  "adapter_name": "realism"
-}
-```
-
-### `POST /v1/system/teardown`
-Gracefully shutdown engine and invoke `google.colab.runtime.unassign()`.

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Colab Model Station - Unified Lifecycle & Tunnel Controller
+# Colab Model Station - Master Engine & Tunnel Lifecycle Controller
+# Supports Universal Multi-Engine (vLLM, Ollama, Diffusers, ComfyUI)
+# and Tri-Networking (Tailscale Mesh, Cloudflare, VS Code Remote Tunnel)
 # ==============================================================================
 set -e
 
@@ -8,6 +10,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_DIR="$DIR/configs"
 SCRIPTS_DIR="$DIR/scripts"
 ENGINES_DIR="$DIR/engines"
+TOOLS_DIR="$DIR/tools"
 LOG_DIR="$DIR/logs"
 
 mkdir -p "$LOG_DIR"
@@ -27,11 +30,11 @@ function detect_hardware() {
     echo "Detected GPU: $GPU_NAME (${GPU_MEM} MB VRAM)"
 
     if [[ "$GPU_NAME" =~ "A100" ]] || [[ "$GPU_NAME" =~ "H100" ]] || [[ "$GPU_MEM" -gt 35000 ]]; then
-        echo "Recommendation: A100 detected. FLUX unquantized (BF16) or SDXL at maximum batch size."
+        echo "Recommendation: Enterprise GPU (A100). Suitable for vLLM (BF16/AWQ 70B) & FLUX.1 unquantized (BF16)."
     elif [[ "$GPU_NAME" =~ "L4" ]] || [[ "$GPU_MEM" -gt 20000 ]]; then
-        echo "Recommendation: L4 detected. FLUX (FP8) with model CPU offloading."
+        echo "Recommendation: High-tier GPU (L4). Suitable for vLLM (14B/32B AWQ), Ollama (32B), & FLUX.1 FP8 (Model Offload)."
     elif [[ "$GPU_NAME" =~ "T4" ]] || [[ "$GPU_MEM" -gt 12000 ]]; then
-        echo "Recommendation: T4 detected. FLUX (FP8 / NF4) with sequential CPU offload, or SDXL (FP16)."
+        echo "Recommendation: Standard GPU (T4). Suitable for Ollama (7B/14B Q4), vLLM (7B AWQ), & FLUX.1 FP8 (Sequential Offload) or SDXL."
     else
         echo "Recommendation: CPU mode detected. Use mock mode or lightweight models for testing."
     fi
@@ -39,41 +42,39 @@ function detect_hardware() {
 
 function show_help() {
     echo "================================================================================"
-    echo "Colab Model Station - Engine & Tunnel CLI"
+    echo "Colab Model Station - Unified Multi-Engine & Tunnel CLI"
     echo "================================================================================"
     echo "Usage: ./engine.sh [command] [options...]"
     echo ""
-    echo "Engine: Diffusers (Port 8000, FastAPI REST / OpenAI Compatible):"
+    echo "General System:"
+    echo "  status                           Show comprehensive system health and all engines"
+    echo "  list                             Display catalog of supported LLM & Diffusion models"
+    echo "  setup [mode]                     Bootstrap dependencies (diffusers|comfyui|vllm|ollama|tunnels|all)"
+    echo "  teardown                         Terminate all services and unassign Colab VM"
+    echo ""
+    echo "Diffusion Engines (Images & LoRAs):"
     echo "  diffusers start [--model ID] [--precision fp8|fp16|bf16] [--mock]"
-    echo "  diffusers stop"
-    echo "  diffusers status"
-    echo "  diffusers logs [-f]"
-    echo ""
-    echo "Engine: ComfyUI (Port 8188, Headless API & Node Graphs):"
+    echo "  diffusers stop | status | logs [-f]"
     echo "  comfyui start [--port 8188] [--vram auto|low|high]"
-    echo "  comfyui stop"
-    echo "  comfyui status"
-    echo "  comfyui logs [-f]"
+    echo "  comfyui stop | status | logs [-f]"
     echo ""
-    echo "Network Tunnels:"
-    echo "  tunnel tailscale up [authkey]    Connect to Tailscale mesh in Userspace mode"
-    echo "  tunnel tailscale down            Disconnect Tailscale"
-    echo "  tunnel tailscale serve [port]    Proxy port to private Tailnet"
-    echo "  tunnel tailscale status          Show Tailscale connection status"
-    echo "  tunnel cloudflare up [port]      Create public HTTPS Cloudflare tunnel"
-    echo "  tunnel cloudflare down           Stop Cloudflare tunnel"
+    echo "LLM Engines (Text, Code & OpenAI API):"
+    echo "  vllm start [--model ID] [--max-len INT] [--gpu-util FLOAT] [--quantization awq|auto]"
+    echo "  vllm stop | status | logs [-f] | chat [model] | bench [model]"
+    echo "  ollama start | stop | status | logs [-f] | list | pull <model> | chat [model] | bench [model]"
     echo ""
-    echo "Storage & Cache:"
+    echo "Network & Remote IDE Tunnels:"
+    echo "  tunnel tailscale up [authkey]    Connect to Tailscale mesh (Userspace mode)"
+    echo "  tunnel tailscale down | status | serve [port]"
+    echo "  tunnel cloudflare up [port] | down"
+    echo "  tunnel vscode [setup|login|start [name]|status|stop]"
+    echo ""
+    echo "Storage, Cache & Safeguards:"
     echo "  cache prefetch <model_repo_id>   Accelerated download via HF Transfer"
     echo "  cache lora <source_url_or_repo>  Download LoRA weights to local registry"
-    echo "  cache stats                      Show disk space and cache usage"
-    echo ""
-    echo "Compute Protection & System:"
-    echo "  watchdog start [--timeout SECS]  Start automated idle teardown daemon"
-    echo "  watchdog stop                    Stop watchdog daemon"
-    echo "  watchdog status                  Check watchdog daemon status"
-    echo "  status                           Show comprehensive system health"
-    echo "  teardown                         Terminate services and unassign Colab VM"
+    echo "  cache stats                      Show storage consumption"
+    echo "  watchdog start [--timeout SECS]  Start automated compute unit guardian"
+    echo "  watchdog stop | status"
     echo "================================================================================"
 }
 
@@ -87,17 +88,28 @@ case "$CMD" in
     status)
         detect_hardware
         echo -e "\n=== Engine Status ==="
-        if curl -s http://127.0.0.1:8000/health &> /dev/null; then
+        # Diffusers
+        if curl -s http://127.0.0.1:8000/health 2>/dev/null | grep -q '"engine":"diffusers"'; then
             MODEL_NAME=$(curl -s http://127.0.0.1:8000/health | jq -r '.active_model // "none"')
             echo "[RUNNING] Diffusers Service (Port: 8000, Model: $MODEL_NAME)"
+        elif curl -s http://127.0.0.1:8000/v1/models &> /dev/null; then
+            echo "[RUNNING] vLLM Service (Port: 8000, OpenAI API Compatible)"
         else
-            echo "[STOPPED] Diffusers Service"
+            echo "[STOPPED] Port 8000 Engine (Diffusers / vLLM)"
         fi
 
+        # ComfyUI
         if curl -s http://127.0.0.1:8188/system_stats &> /dev/null; then
             echo "[RUNNING] ComfyUI Service (Port: 8188)"
         else
             echo "[STOPPED] ComfyUI Service"
+        fi
+
+        # Ollama
+        if curl -s http://127.0.0.1:11434/api/version &> /dev/null; then
+            echo "[RUNNING] Ollama Service (Port: 11434, GGUF Models)"
+        else
+            echo "[STOPPED] Ollama Service"
         fi
 
         echo -e "\n=== Network Tunnel Status ==="
@@ -115,10 +127,42 @@ case "$CMD" in
             echo "[INACTIVE] Cloudflare Public Tunnel"
         fi
 
+        if pgrep -f "code tunnel" > /dev/null; then
+            VSCODE_NAME=$(grep -o '"name": *"[^"]*"' /root/.vscode/cli/code_tunnel.json 2>/dev/null | cut -d'"' -f4 || echo "colab-model-station")
+            echo "[ACTIVE]  VS Code Remote Tunnel (Name: $VSCODE_NAME)"
+            echo "          Endpoint: https://vscode.dev/tunnel/$VSCODE_NAME"
+        else
+            echo "[INACTIVE] VS Code Remote Tunnel"
+        fi
+
         echo -e "\n=== Watchdog Status ==="
         python3 "$SCRIPTS_DIR/idle_watchdog.py" status
         ;;
 
+    list)
+        python3 -c "
+import json
+from pathlib import Path
+cfg = json.loads(Path('$CONFIG_DIR/models.json').read_text())
+cats = cfg.get('catalogs', {})
+
+print('=== Diffusion Models ===')
+for m, v in cats.get('diffusion', {}).get('models', {}).items():
+    print(f'• {m:<45} | {v.get(\"description\", \"\")}')
+
+print('\n=== LLM Models (vLLM Engine) ===')
+for m, v in cats.get('llm', {}).get('vllm', {}).get('models', {}).items():
+    print(f'• {m:<45} | ~{v.get(\"vram_gb\")}GB | {v.get(\"description\", \"\")}')
+
+print('\n=== LLM Models (Ollama Engine) ===')
+for m, v in cats.get('llm', {}).get('ollama', {}).get('models', {}).items():
+    print(f'• {m:<25} | ~{v.get(\"vram_gb\")}GB | {v.get(\"description\", \"\")}')
+"
+        ;;
+
+    # ==========================================================================
+    # Engine: Diffusers (Port 8000)
+    # ==========================================================================
     diffusers)
         ACTION="${2:-status}"
         PID_FILE="$LOG_DIR/diffusers.pid"
@@ -203,7 +247,7 @@ case "$CMD" in
                 ;;
 
             status)
-                if curl -s http://127.0.0.1:8000/health &> /dev/null; then
+                if curl -s http://127.0.0.1:8000/health 2>/dev/null | grep -q '"engine":"diffusers"'; then
                     echo "[RUNNING] Diffusers service is responsive."
                     curl -s http://127.0.0.1:8000/health | jq .
                 else
@@ -222,6 +266,9 @@ case "$CMD" in
         esac
         ;;
 
+    # ==========================================================================
+    # Engine: ComfyUI (Port 8188)
+    # ==========================================================================
     comfyui)
         ACTION="${2:-status}"
         case "$ACTION" in
@@ -245,6 +292,84 @@ case "$CMD" in
         esac
         ;;
 
+    # ==========================================================================
+    # Engine: vLLM (Port 8000, OpenAI API)
+    # ==========================================================================
+    vllm)
+        ACTION="${2:-status}"
+        case "$ACTION" in
+            start|serve)
+                python3 "$ENGINES_DIR/llm_engine/runner.py" vllm start "${@:3}"
+                ;;
+            stop)
+                python3 "$ENGINES_DIR/llm_engine/runner.py" vllm stop
+                ;;
+            status)
+                python3 "$ENGINES_DIR/llm_engine/runner.py" vllm status
+                ;;
+            logs)
+                FOLLOW="${3:-}"
+                if [ "$FOLLOW" == "-f" ]; then
+                    tail -f "$LOG_DIR/vllm.log"
+                else
+                    tail -n 40 "$LOG_DIR/vllm.log"
+                fi
+                ;;
+            chat)
+                MODEL="${3:-Qwen/Qwen2.5-Coder-7B-Instruct-AWQ}"
+                python3 "$TOOLS_DIR/chat.py" --endpoint "http://127.0.0.1:8000" --model "$MODEL"
+                ;;
+            bench)
+                MODEL="${3:-Qwen/Qwen2.5-Coder-7B-Instruct-AWQ}"
+                python3 "$TOOLS_DIR/token_benchmark.py" --endpoint "http://127.0.0.1:8000" --model "$MODEL"
+                ;;
+        esac
+        ;;
+
+    # ==========================================================================
+    # Engine: Ollama (Port 11434, GGUF)
+    # ==========================================================================
+    ollama)
+        ACTION="${2:-status}"
+        case "$ACTION" in
+            start|serve)
+                python3 "$ENGINES_DIR/llm_engine/runner.py" ollama start "${@:3}"
+                ;;
+            stop)
+                python3 "$ENGINES_DIR/llm_engine/runner.py" ollama stop
+                ;;
+            status)
+                python3 "$ENGINES_DIR/llm_engine/runner.py" ollama status
+                ;;
+            logs)
+                FOLLOW="${3:-}"
+                if [ "$FOLLOW" == "-f" ]; then
+                    tail -f "$LOG_DIR/ollama.log"
+                else
+                    tail -n 40 "$LOG_DIR/ollama.log"
+                fi
+                ;;
+            pull)
+                MODEL="${3:-qwen2.5-coder:7b}"
+                python3 "$ENGINES_DIR/llm_engine/runner.py" ollama pull "$MODEL"
+                ;;
+            list)
+                python3 "$ENGINES_DIR/llm_engine/runner.py" ollama list
+                ;;
+            chat)
+                MODEL="${3:-qwen2.5-coder:7b}"
+                python3 "$TOOLS_DIR/chat.py" --endpoint "http://127.0.0.1:11434" --model "$MODEL"
+                ;;
+            bench)
+                MODEL="${3:-qwen2.5-coder:7b}"
+                python3 "$TOOLS_DIR/token_benchmark.py" --endpoint "http://127.0.0.1:11434" --model "$MODEL"
+                ;;
+        esac
+        ;;
+
+    # ==========================================================================
+    # Network & Remote IDE Tunnels
+    # ==========================================================================
     tunnel)
         TARGET="${2:-help}"
         case "$TARGET" in
@@ -299,7 +424,7 @@ case "$CMD" in
                         PORT="${4:-8000}"
                         if ! command -v cloudflared > /dev/null 2>&1; then
                             echo "[INFO] Installing cloudflared..."
-                            bash "$SCRIPTS_DIR/setup.sh" all
+                            bash "$SCRIPTS_DIR/setup.sh" tunnels
                         fi
                         pkill -f "cloudflared tunnel" || true
                         echo "[INFO] Opening Cloudflare Tunnel to port $PORT..."
@@ -317,26 +442,90 @@ case "$CMD" in
                         ;;
                 esac
                 ;;
+
+            vscode)
+                ACTION="${3:-status}"
+                PERSIST_DIR="/content/drive/MyDrive/.vscode_colab"
+                case "$ACTION" in
+                    setup)
+                        echo "[INFO] Checking VS Code CLI..."
+                        if ! command -v code > /dev/null 2>&1; then
+                            echo "[INFO] Downloading VS Code CLI..."
+                            curl -Lk 'https://code.visualstudio.com/sha/download?build=stable&os=cli-alpine-x64' --output /tmp/vscode_cli.tar.gz
+                            tar -xf /tmp/vscode_cli.tar.gz -C /usr/local/bin
+                            chmod +x /usr/local/bin/code
+                            rm -f /tmp/vscode_cli.tar.gz
+                        fi
+                        mkdir -p "$PERSIST_DIR"
+                        mkdir -p /root/.vscode/cli
+                        if [ -f "$PERSIST_DIR/token.json" ]; then
+                            echo "[INFO] Restoring credentials from Google Drive ($PERSIST_DIR)..."
+                            cp -rn "$PERSIST_DIR"/* /root/.vscode/cli/ 2>/dev/null || true
+                        fi
+                        echo "[SUCCESS] VS Code CLI ready: $(code --version | head -n 1)"
+                        ;;
+                    login)
+                        mkdir -p "$PERSIST_DIR"
+                        mkdir -p /root/.vscode/cli
+                        cp -rn "$PERSIST_DIR"/* /root/.vscode/cli/ 2>/dev/null || true
+                        if code tunnel user show >/dev/null 2>&1; then
+                            echo "[INFO] Already authenticated to VS Code Tunnel via GitHub:"
+                            code tunnel user show
+                        else
+                            echo "[INFO] Authenticating VS Code Tunnel via GitHub..."
+                            code tunnel user login --provider github
+                            cp -f /root/.vscode/cli/token.json /root/.vscode/cli/code_tunnel.json "$PERSIST_DIR/" 2>/dev/null || true
+                            echo "[SUCCESS] Credentials saved to $PERSIST_DIR for persistence across sessions."
+                        fi
+                        ;;
+                    start)
+                        NAME="${4:-colab-model-station}"
+                        mkdir -p "$PERSIST_DIR"
+                        mkdir -p /root/.vscode/cli
+                        cp -rn "$PERSIST_DIR"/* /root/.vscode/cli/ 2>/dev/null || true
+                        if pgrep -f "code tunnel" > /dev/null; then
+                            echo "[WARN] VS Code Tunnel is already running."
+                        else
+                            echo "[INFO] Starting VS Code Remote Tunnel (Name: $NAME)..."
+                            nohup code tunnel --accept-server-license-terms --name "$NAME" > "$LOG_DIR/vscode_tunnel.log" 2>&1 &
+                            sleep 4
+                        fi
+                        echo "================================================================"
+                        echo "VS Code Remote Tunnel Status:"
+                        echo "  Machine Name: $NAME"
+                        echo "  Web URL:      https://vscode.dev/tunnel/$NAME"
+                        echo "================================================================"
+                        ;;
+                    stop)
+                        pkill -f "code tunnel" || true
+                        echo "[SUCCESS] VS Code Remote Tunnel stopped."
+                        ;;
+                    status)
+                        if pgrep -f "code tunnel" > /dev/null; then
+                            echo "[RUNNING] VS Code Tunnel is active."
+                        else
+                            echo "[STOPPED] VS Code Tunnel is not running."
+                        fi
+                        ;;
+                esac
+                ;;
         esac
         ;;
 
+    # ==========================================================================
+    # Storage, Cache & Safeguards
+    # ==========================================================================
     cache)
         ACTION="${2:-stats}"
         case "$ACTION" in
             prefetch)
                 REPO_ID="${3:-}"
-                if [ -z "$REPO_ID" ]; then
-                    echo "Usage: ./engine.sh cache prefetch <model_repo_id>"
-                    exit 1
-                fi
+                [ -z "$REPO_ID" ] && { echo "Usage: ./engine.sh cache prefetch <model_repo_id>"; exit 1; }
                 python3 "$SCRIPTS_DIR/cache_manager.py" model "$REPO_ID"
                 ;;
             lora)
                 LORA_SRC="${3:-}"
-                if [ -z "$LORA_SRC" ]; then
-                    echo "Usage: ./engine.sh cache lora <source_url_or_repo>"
-                    exit 1
-                fi
+                [ -z "$LORA_SRC" ] && { echo "Usage: ./engine.sh cache lora <source_url_or_repo>"; exit 1; }
                 python3 "$SCRIPTS_DIR/cache_manager.py" lora "$LORA_SRC"
                 ;;
             stats)
@@ -365,6 +554,9 @@ case "$CMD" in
         python3 "$SCRIPTS_DIR/idle_watchdog.py" stop || true
         bash "$DIR/engine.sh" diffusers stop || true
         bash "$DIR/engine.sh" comfyui stop || true
+        bash "$DIR/engine.sh" vllm stop || true
+        bash "$DIR/engine.sh" ollama stop || true
+        bash "$DIR/engine.sh" tunnel vscode stop || true
         pkill -f "cloudflared tunnel" || true
         tailscale down 2>/dev/null || true
 

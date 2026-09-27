@@ -1,0 +1,81 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "providers": {
+    "colab-vllm": {
+      "package": "@opencode/ai/providers/openai-compatible",
+      "name": "Colab vLLM (Enterprise A100 / L4)",
+      "settings": {
+        "baseURL": "http://colab-model-station:8000/v1",
+        "apiKey": "vllm"
+      },
+      "models": {
+        "Qwen/Qwen2.5-Coder-32B-Instruct-AWQ": {
+          "name": "Qwen 2.5 Coder 32B (AWQ)",
+          "limit": {
+            "context": 32768,
+            "output": 8192
+          }
+        },
+        "Qwen/Qwen2.5-Coder-14B-Instruct-AWQ": {
+          "name": "Qwen 2.5 Coder 14B (AWQ)",
+          "limit": {
+            "context": 32768,
+            "output": 8192
+          }
+        },
+        "Qwen/Qwen2.5-Coder-7B-Instruct-AWQ": {
+          "name": "Qwen 2.5 Coder 7B (AWQ)",
+          "limit": {
+            "context": 32768,
+            "output": 8192
+          }
+        }
+      }
+    },
+    "colab-ollama": {
+      "package": "@opencode/ai/providers/openai-compatible",
+      "name": "Colab Ollama (GGUF T4 / L4)",
+      "settings": {
+        "baseURL": "http://colab-model-station:11434/v1",
+        "apiKey": "ollama"
+      },
+      "models": {
+        "qwen2.5-coder:7b": {
+          "name": "Qwen 2.5 Coder (7B)",
+          "limit": {
+            "context": 32768,
+            "output": 8192
+          }
+        },
+        "qwen2.5-coder:14b": {
+          "name": "Qwen 2.5 Coder (14B)",
+          "limit": {
+            "context": 32768,
+            "output": 8192
+          }
+        },
+        "qwen2.5-coder:32b": {
+          "name": "Qwen 2.5 Coder (32B)",
+          "limit": {
+            "context": 32768,
+            "output": 8192
+          }
+        },
+        "deepseek-r1:8b": {
+          "name": "DeepSeek R1 (8B)",
+          "limit": {
+            "context": 32768,
+            "output": 8192
+          }
+        },
+        "deepseek-r1:32b": {
+          "name": "DeepSeek R1 (32B)",
+          "limit": {
+            "context": 32768,
+            "output": 8192
+          }
+        }
+      }
+    }
+  }
+}

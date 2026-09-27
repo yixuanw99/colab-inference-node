@@ -6,7 +6,7 @@ Operating standards and repository guardrails for autonomous AI coding agents wo
 
 ## 1. System Overview & Purpose
 
-`colab-model-station` provides an automated, production-grade infrastructure for deploying arbitrary deep learning models—with primary focus on diffusion models (FLUX.1, FLUX.2, SDXL)—on Google Colab GPU runtimes. It enables private, headless remote access from local developer workstations (macOS, Linux, WSL) via Tailscale Mesh network (Userspace Networking mode) or Cloudflare Tunnels, orchestrated locally via the Google Colab CLI (`google-colab-cli`).
+`colab-model-station` provides an automated, production-grade infrastructure for deploying arbitrary deep learning models on Google Colab GPU runtimes. It serves both **Large Language Models (vLLM / Ollama)** and **Diffusion Models (FLUX.1 / FLUX.2 / SDXL / ComfyUI)**, with extensible contracts for **VLM, Audio AI, Embeddings, and Video Diffusion**. It enables private, headless remote access from local developer workstations (macOS, Linux, WSL) via Tailscale Mesh network (Userspace Networking mode), Cloudflare Tunnels, or VS Code Remote Tunnels, orchestrated locally via the Google Colab CLI (`google-colab-cli`).
 
 ---
 
@@ -29,7 +29,7 @@ All AI agents interacting with this repository or acting within this project mus
 colab-model-station/
 ├── station.sh                   # Unified entrypoint for local workstation and Colab
 ├── station.ps1                  # Local workstation launcher (Windows PowerShell)
-├── engine.sh                    # Colab master CLI lifecycle controller (Diffusers, ComfyUI, Tunnels)
+├── engine.sh                    # Master CLI controller (vLLM, Ollama, Diffusers, ComfyUI, Tunnels)
 ├── setup.sh                     # Dependency installer forwarder -> scripts/setup.sh
 ├── colab_station.ipynb          # Primary interactive deployment notebook (English source of truth)
 ├── colab_station-zh.ipynb       # Mirrored interactive deployment notebook (Traditional Chinese)
@@ -38,24 +38,23 @@ colab-model-station/
 ├── README_zh.md                 # System architecture and deployment guide (Traditional Chinese)
 ├── .env.example                 # Template for local workstation and Colab environment variables
 ├── configs/                     # Central configurations, model catalogs, and hardware profiles
-│   ├── models.json              # Model catalog (FLUX.1, SDXL, LoRA metadata)
+│   ├── models.json              # Structured catalog (Diffusion, LLM, VLM/Audio planned)
 │   ├── hardware_profiles.json   # VRAM allocation matrix and quantization guidance
 │   ├── versions.env             # Pinned package and binary versions
 │   └── requirements.lock        # Pinned Python package dependencies
-├── engines/                     # Inference engine implementations & wrappers
-│   ├── base.py                  # Abstract base engine class
-│   ├── diffusers_engine/        # FastAPI + Hugging Face Diffusers adapter
-│   │   ├── server.py            # FastAPI service exposing /v1/images/generations & /v1/loras
-│   │   ├── pipeline_manager.py  # Model loading, FP8 casting, offload, and LoRA switcher
-│   │   ├── schemas.py           # Pydantic request/response schemas
-│   │   └── requirements.txt     # Engine dependencies
-│   └── comfyui_engine/          # Headless ComfyUI daemon runner & workflow client
-│       ├── runner.py            # Headless process supervisor
-│       ├── client.py            # WebSocket/HTTP client for queueing prompt graphs
-│       ├── workflows/           # Pre-configured API prompt JSON templates
-│       └── requirements.txt
+├── engines/                     # Inference engine implementations & modular wrappers
+│   ├── base.py                  # Universal abstract contracts (Diffusion, LLM, VLM, Audio, Video)
+│   ├── diffusers_engine/        # FastAPI + Hugging Face Diffusers adapter (FLUX.1, SDXL, LoRA)
+│   ├── comfyui_engine/          # Headless ComfyUI runner & workflow client
+│   ├── llm_engine/              # vLLM & Ollama process supervisor
+│   ├── vlm_engine/              # Vision-Language interface stub (Qwen2-VL, Florence-2)
+│   ├── audio_engine/            # Audio AI interface stub (Faster-Whisper, F5-TTS)
+│   ├── embedding_engine/        # Dense embedding & reranker interface stub (BGE-M3)
+│   └── video_engine/            # Video diffusion interface stub (Wan2.1, CogVideoX)
+├── templates/
+│   └── opencode.json            # OpenCode / Cursor client configuration for Tailscale mesh
 ├── scripts/                     # Automation, bootstrap, and maintenance utilities
-│   ├── setup.sh                 # Environment bootstrap & dependency installer
+│   ├── setup.sh                 # Environment bootstrap (diffusers, comfyui, vllm, ollama, tunnels)
 │   ├── remote_bootstrap.py      # Remote headless bootstrap payload for `colab exec`
 │   ├── cache_manager.py         # Multi-threaded Hugging Face & LoRA prefetcher
 │   ├── idle_watchdog.py         # Compute unit protection daemon (monitors idle & triggers unassign)
@@ -63,6 +62,8 @@ colab-model-station/
 ├── tools/                       # Client diagnostic and testing tools (Workstation side)
 │   ├── station_ctl.py           # Core local workstation orchestrator (Google Colab CLI)
 │   ├── generate.py              # CLI client for remote image generation & LoRA invocation
+│   ├── chat.py                  # Interactive streaming CLI shell for LLMs
+│   ├── token_benchmark.py       # LLM TTFT and token generation throughput benchmark
 │   ├── benchmark.py             # Latency, memory peak, and throughput benchmark utility
 │   └── test_inference.py        # Automated test suite for endpoints & LoRA swapping
 └── logs/                        # Runtime daemon logs and PID tracking (git-ignored)
@@ -103,19 +104,7 @@ Google Colab operates in a headless Linux container without interactive TTY term
   ```
 - An automated idle watchdog (`scripts/idle_watchdog.py`) must monitor request traffic and terminate the runtime after a configurable idle threshold (default: 30 minutes).
 
-### 4.5 Hardware & VRAM Allocation Matrix
-Agents configuring models or inference engines must adhere to strict hardware boundaries:
-
-| Hardware Tier | Typical VRAM | Recommended Engines & Formats | Optimization Flags |
-|---|---|---|---|
-| **CPU / Fallback** | System RAM | Diffusers (Mock / TinySD) | Sequential CPU offload, low steps |
-| **Tesla T4** | 16 GB | Diffusers: SDXL (FP16), FLUX.1 (FP8 / NF4)<br>ComfyUI: FLUX.1 GGUF (Q4_K_S) | `enable_sequential_cpu_offload()`, batch size 1 |
-| **NVIDIA L4** | 24 GB | Diffusers: FLUX.1 (FP8 `torch.float8_e4m3fn`), SDXL (FP16)<br>ComfyUI: FLUX.1 (FP8 Checkpoint) | `enable_model_cpu_offload()` |
-| **A100 (SXM4)** | 40 GB / 80 GB | Diffusers: FLUX.1 (BF16 Native), SDXL (BF16)<br>ComfyUI: FLUX.1 (BF16) | Full GPU residence, optional `torch.compile` |
-
-Inspect GPU hardware using `nvidia-smi` or `torch.cuda.get_device_properties(0)` before launching models.
-
-### 4.6 Dual-Notebook Synchronization Rule
+### 4.5 Dual-Notebook Synchronization Rule
 - `colab_station.ipynb` is the primary English source of truth.
 - `colab_station-zh.ipynb` is the Traditional Chinese localized mirror.
 - **Mandatory**: Any modification to cells, scripts, workflows, or deployment steps in one notebook must be mirrored identically in the other.
@@ -131,43 +120,34 @@ Inspect GPU hardware using `nvidia-smi` or `torch.cuda.get_device_properties(0)`
 
 ### 5.1 Service Lifecycle Management (`engine.sh`)
 ```bash
-# Diffusers FastAPI Service
+# Diffusion Engines
 bash engine.sh diffusers start --model "black-forest-labs/FLUX.1-schnell" --precision fp8
 bash engine.sh diffusers stop
-bash engine.sh diffusers logs -f
-
-# ComfyUI Headless Service
 bash engine.sh comfyui start
 bash engine.sh comfyui stop
-bash engine.sh comfyui logs -f
 
-# Tailscale Mesh Networking (Userspace Mode)
+# LLM Engines
+bash engine.sh vllm start --model "Qwen/Qwen2.5-Coder-7B-Instruct-AWQ"
+bash engine.sh vllm stop
+bash engine.sh ollama start
+bash engine.sh ollama pull "qwen2.5-coder:7b"
+bash engine.sh ollama stop
+
+# Networking & Remote IDE Tunnels
 bash engine.sh tunnel tailscale up --authkey "$TAILSCALE_AUTHKEY"
-bash engine.sh tunnel tailscale down
 bash engine.sh tunnel tailscale serve 8000
-
-# Cloudflare Public Tunnel
 bash engine.sh tunnel cloudflare up --port 8000
-bash engine.sh tunnel cloudflare down
+bash engine.sh tunnel vscode start "colab-model-station"
 
-# Idle Watchdog (Compute Unit Protection)
+# Safeguards & System
 bash engine.sh watchdog start --timeout 1800
-bash engine.sh watchdog status
-bash engine.sh watchdog stop
-
-# Diagnostics & Status
 bash engine.sh status
+bash engine.sh teardown
 ```
 
 ### 5.2 Git Synchronization
 When synchronizing changes:
 ```bash
-bash scripts/sync_git.sh "feat(core): implement dynamic lora switching endpoint"
-```
-Or standard git operations:
-```bash
-git add -A
-git commit -m "type(scope): concise technical description in english"
-git push origin main
+bash scripts/sync_git.sh "feat(core): concise technical description in english"
 ```
 Commit messages must follow Conventional Commits format in lowercase English, without emojis.

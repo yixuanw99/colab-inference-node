@@ -16,10 +16,10 @@ from typing import Any, Dict, List, Optional, Tuple
 import torch
 from PIL import Image
 
-from engines.base import BaseEngine
+from engines.base import DiffusionEngineInterface
 
 
-class DiffusersPipelineManager(BaseEngine):
+class DiffusersPipelineManager(DiffusionEngineInterface):
     """Manages Hugging Face Diffusers pipelines for FLUX and SDXL."""
 
     def __init__(self, output_dir: Optional[str] = None):

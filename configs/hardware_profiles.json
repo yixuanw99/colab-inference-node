@@ -4,40 +4,64 @@
       "name": "CPU Fallback Environment",
       "vram_mb": 0,
       "torch_dtype": "float32",
-      "flux_supported": false,
-      "sdxl_supported": true,
-      "offload_strategy": "sequential",
-      "notes": "Testing and diagnostic mode only. Extremely slow for diffusion generation."
+      "diffusion": {
+        "flux_supported": false,
+        "sdxl_supported": true,
+        "offload_strategy": "sequential"
+      },
+      "llm": {
+        "vllm_supported": false,
+        "ollama_supported": true,
+        "recommended_model": "qwen2.5-coder:1.5b"
+      }
     },
     "t4": {
-      "name": "NVIDIA Tesla T4",
+      "name": "NVIDIA Tesla T4 (16 GB)",
       "vram_mb": 15360,
       "torch_dtype": "float16",
-      "flux_supported": true,
-      "flux_precision": "fp8",
-      "sdxl_supported": true,
-      "offload_strategy": "sequential",
-      "notes": "Standard free/pro Colab tier. FLUX requires FP8 or GGUF quantization with sequential offload."
+      "diffusion": {
+        "flux_supported": true,
+        "flux_precision": "fp8",
+        "sdxl_supported": true,
+        "offload_strategy": "sequential"
+      },
+      "llm": {
+        "vllm_supported": true,
+        "vllm_recommended": "Qwen/Qwen2.5-Coder-7B-Instruct-AWQ",
+        "ollama_recommended": "qwen2.5-coder:7b"
+      }
     },
     "l4": {
-      "name": "NVIDIA L4",
+      "name": "NVIDIA L4 (24 GB)",
       "vram_mb": 23040,
       "torch_dtype": "float16",
-      "flux_supported": true,
-      "flux_precision": "fp8",
-      "sdxl_supported": true,
-      "offload_strategy": "model",
-      "notes": "Recommended Colab Pro tier. FLUX runs smoothly in FP8 with model CPU offloading."
+      "diffusion": {
+        "flux_supported": true,
+        "flux_precision": "fp8",
+        "sdxl_supported": true,
+        "offload_strategy": "model"
+      },
+      "llm": {
+        "vllm_supported": true,
+        "vllm_recommended": "Qwen/Qwen2.5-Coder-14B-Instruct-AWQ",
+        "ollama_recommended": "qwen2.5-coder:32b"
+      }
     },
     "a100": {
-      "name": "NVIDIA A100 (40GB / 80GB)",
+      "name": "NVIDIA A100 (40 GB / 80 GB)",
       "vram_mb": 40960,
       "torch_dtype": "bfloat16",
-      "flux_supported": true,
-      "flux_precision": "bf16",
-      "sdxl_supported": true,
-      "offload_strategy": "none",
-      "notes": "High performance compute unit. Full VRAM residence, unquantized BF16."
+      "diffusion": {
+        "flux_supported": true,
+        "flux_precision": "bf16",
+        "sdxl_supported": true,
+        "offload_strategy": "none"
+      },
+      "llm": {
+        "vllm_supported": true,
+        "vllm_recommended": "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
+        "ollama_recommended": "qwen2.5-coder:32b"
+      }
     }
   }
 }

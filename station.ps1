@@ -16,6 +16,12 @@ switch ($cmd) {
     "generate" {
         python "$ScriptDir\tools\generate.py" @remainingArgs
     }
+    "chat" {
+        python "$ScriptDir\tools\chat.py" @remainingArgs
+    }
+    "token-bench" {
+        python "$ScriptDir\tools\token_benchmark.py" @remainingArgs
+    }
     "benchmark" {
         python "$ScriptDir\tools\benchmark.py" @remainingArgs
     }

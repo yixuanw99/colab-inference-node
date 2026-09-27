@@ -13,6 +13,10 @@ else
     # Executing on local developer workstation (macOS / Linux / WSL)
     if [ "$1" == "generate" ]; then
         exec python3 "$DIR/tools/generate.py" "${@:2}"
+    elif [ "$1" == "chat" ]; then
+        exec python3 "$DIR/tools/chat.py" "${@:2}"
+    elif [ "$1" == "token-bench" ]; then
+        exec python3 "$DIR/tools/token_benchmark.py" "${@:2}"
     elif [ "$1" == "benchmark" ]; then
         exec python3 "$DIR/tools/benchmark.py" "${@:2}"
     elif [ "$1" == "test" ]; then

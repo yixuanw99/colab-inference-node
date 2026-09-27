@@ -1,78 +1,142 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "version": "1.0.0",
-  "default_model": "black-forest-labs/FLUX.1-schnell",
-  "models": {
-    "black-forest-labs/FLUX.1-schnell": {
-      "name": "FLUX.1 [schnell]",
-      "family": "flux",
-      "pipeline_type": "FluxPipeline",
-      "repo_id": "black-forest-labs/FLUX.1-schnell",
-      "description": "12B parameter rectified flow transformer tailored for 1-4 step high-speed generation.",
-      "license": "apache-2.0",
-      "default_steps": 4,
-      "default_guidance_scale": 0.0,
-      "default_width": 1024,
-      "default_height": 1024,
-      "supports_lora": true,
-      "recommended_hardware": {
-        "t4": {"precision": "fp8", "offload": "sequential", "max_batch": 1},
-        "l4": {"precision": "fp8", "offload": "model", "max_batch": 1},
-        "a100": {"precision": "bf16", "offload": "none", "max_batch": 4}
+  "version": "2.0.0",
+  "catalogs": {
+    "diffusion": {
+      "default_model": "black-forest-labs/FLUX.1-schnell",
+      "models": {
+        "black-forest-labs/FLUX.1-schnell": {
+          "name": "FLUX.1 [schnell]",
+          "family": "flux",
+          "pipeline_type": "FluxPipeline",
+          "description": "12B parameter flow transformer for 1-4 step generation.",
+          "license": "apache-2.0",
+          "default_steps": 4,
+          "default_guidance_scale": 0.0,
+          "supports_lora": true,
+          "hardware": {
+            "t4": {"precision": "fp8", "offload": "sequential"},
+            "l4": {"precision": "fp8", "offload": "model"},
+            "a100": {"precision": "bf16", "offload": "none"}
+          }
+        },
+        "black-forest-labs/FLUX.1-dev": {
+          "name": "FLUX.1 [dev]",
+          "family": "flux",
+          "pipeline_type": "FluxPipeline",
+          "description": "12B parameter photorealistic guidance-distilled model.",
+          "license": "non-commercial",
+          "gated": true,
+          "default_steps": 28,
+          "default_guidance_scale": 3.5,
+          "supports_lora": true,
+          "hardware": {
+            "t4": {"precision": "fp8", "offload": "sequential"},
+            "l4": {"precision": "fp8", "offload": "model"},
+            "a100": {"precision": "bf16", "offload": "none"}
+          }
+        },
+        "stabilityai/stable-diffusion-xl-base-1.0": {
+          "name": "Stable Diffusion XL Base 1.0",
+          "family": "sdxl",
+          "pipeline_type": "StableDiffusionXLPipeline",
+          "description": "Flagship 3.5B latent diffusion model.",
+          "license": "openrail++",
+          "default_steps": 30,
+          "default_guidance_scale": 7.5,
+          "supports_lora": true,
+          "hardware": {
+            "t4": {"precision": "fp16", "offload": "model"},
+            "l4": {"precision": "fp16", "offload": "none"},
+            "a100": {"precision": "fp16", "offload": "none"}
+          }
+        }
+      },
+      "lora_examples": [
+        {
+          "name": "flux-realism-lora",
+          "target_family": "flux",
+          "repo_id": "XLabs-AI/flux-RealismLora",
+          "recommended_scale": 0.85
+        },
+        {
+          "name": "sdxl-offset-lora",
+          "target_family": "sdxl",
+          "repo_id": "neroger/pixel-art-xl",
+          "recommended_scale": 0.80
+        }
+      ]
+    },
+    "llm": {
+      "vllm": {
+        "models": {
+          "Qwen/Qwen2.5-Coder-7B-Instruct-AWQ": {
+            "vram_gb": 8.0,
+            "quantization": "awq",
+            "context_length": 32768,
+            "description": "Optimal 7B code model for T4/L4 high-throughput serving."
+          },
+          "Qwen/Qwen2.5-Coder-14B-Instruct-AWQ": {
+            "vram_gb": 12.0,
+            "quantization": "awq",
+            "context_length": 32768,
+            "description": "Balanced coding model for L4 (24GB VRAM)."
+          },
+          "Qwen/Qwen2.5-Coder-32B-Instruct-AWQ": {
+            "vram_gb": 22.0,
+            "quantization": "awq",
+            "context_length": 32768,
+            "description": "High capability 32B model fitting L4 (24GB) or A100."
+          },
+          "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B": {
+            "vram_gb": 65.0,
+            "quantization": "none",
+            "context_length": 32768,
+            "description": "Full bfloat16 reasoning model for A100 (80GB)."
+          }
+        }
+      },
+      "ollama": {
+        "models": {
+          "qwen2.5-coder:7b": {
+            "vram_gb": 6.5,
+            "format": "GGUF Q4_K_M",
+            "description": "Fast and lightweight coding assistant for T4."
+          },
+          "qwen2.5-coder:14b": {
+            "vram_gb": 11.0,
+            "format": "GGUF Q4_K_M",
+            "description": "Intermediate coding model for T4/L4."
+          },
+          "qwen2.5-coder:32b": {
+            "vram_gb": 20.0,
+            "format": "GGUF Q4_K_M",
+            "description": "Top-tier open-source coding engine for L4."
+          },
+          "deepseek-r1:8b": {
+            "vram_gb": 7.0,
+            "format": "GGUF Q4_K_M",
+            "description": "Reasoning distilled model for T4."
+          },
+          "deepseek-r1:32b": {
+            "vram_gb": 21.0,
+            "format": "GGUF Q4_K_M",
+            "description": "Flagship 32B reasoning model on L4."
+          }
+        }
       }
     },
-    "black-forest-labs/FLUX.1-dev": {
-      "name": "FLUX.1 [dev]",
-      "family": "flux",
-      "pipeline_type": "FluxPipeline",
-      "repo_id": "black-forest-labs/FLUX.1-dev",
-      "description": "12B parameter guidance-distilled model offering premier photorealism and typography.",
-      "license": "non-commercial",
-      "gated": true,
-      "default_steps": 28,
-      "default_guidance_scale": 3.5,
-      "default_width": 1024,
-      "default_height": 1024,
-      "supports_lora": true,
-      "recommended_hardware": {
-        "t4": {"precision": "fp8", "offload": "sequential", "max_batch": 1},
-        "l4": {"precision": "fp8", "offload": "model", "max_batch": 1},
-        "a100": {"precision": "bf16", "offload": "none", "max_batch": 2}
-      }
+    "vlm_planned": {
+      "models": ["Qwen/Qwen2-VL-7B-Instruct", "microsoft/Florence-2-large"]
     },
-    "stabilityai/stable-diffusion-xl-base-1.0": {
-      "name": "Stable Diffusion XL Base 1.0",
-      "family": "sdxl",
-      "pipeline_type": "StableDiffusionXLPipeline",
-      "repo_id": "stabilityai/stable-diffusion-xl-base-1.0",
-      "description": "Flagship 3.5B parameter latent diffusion model with broad community LoRA support.",
-      "license": "openrail++",
-      "default_steps": 30,
-      "default_guidance_scale": 7.5,
-      "default_width": 1024,
-      "default_height": 1024,
-      "supports_lora": true,
-      "recommended_hardware": {
-        "t4": {"precision": "fp16", "offload": "model", "max_batch": 2},
-        "l4": {"precision": "fp16", "offload": "none", "max_batch": 4},
-        "a100": {"precision": "fp16", "offload": "none", "max_batch": 8}
-      }
+    "audio_planned": {
+      "models": ["openai/whisper-large-v3", "SWivid/F5-TTS"]
+    },
+    "embedding_planned": {
+      "models": ["BAAI/bge-m3", "BAAI/bge-reranker-large"]
+    },
+    "video_planned": {
+      "models": ["Wan-AI/Wan2.1-T2V-1.3B", "THUDM/CogVideoX-2b"]
     }
-  },
-  "lora_examples": [
-    {
-      "name": "flux-realism-lora",
-      "target_family": "flux",
-      "repo_id": "XLabs-AI/flux-RealismLora",
-      "weight_name": "lora.safetensors",
-      "recommended_scale": 0.85
-    },
-    {
-      "name": "sdxl-offset-lora",
-      "target_family": "sdxl",
-      "repo_id": "neroger/pixel-art-xl",
-      "weight_name": "pixel-art-xl.safetensors",
-      "recommended_scale": 0.80
-    }
-  ]
+  }
 }

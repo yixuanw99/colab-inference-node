@@ -40,6 +40,17 @@ function install_cloudflared() {
     fi
 }
 
+function install_vscode_cli() {
+    if ! command -v code > /dev/null 2>&1; then
+        echo "[SETUP] Installing VS Code CLI..."
+        curl -Lk 'https://code.visualstudio.com/sha/download?build=stable&os=cli-alpine-x64' --output /tmp/vscode_cli.tar.gz
+        tar -xf /tmp/vscode_cli.tar.gz -C /usr/local/bin
+        chmod +x /usr/local/bin/code
+        rm -f /tmp/vscode_cli.tar.gz
+        echo "[SETUP] VS Code CLI ready: $(code --version | head -n 1)"
+    fi
+}
+
 function install_diffusers_deps() {
     echo "[SETUP] Provisioning Python dependencies for Diffusers Engine..."
     pip install -q -r "$DIR/configs/requirements.lock"
@@ -61,10 +72,28 @@ function install_comfyui() {
     echo "[SETUP] ComfyUI installation ready."
 }
 
+function install_ollama() {
+    echo "[SETUP] Installing Ollama standalone binary..."
+    curl -fsSL https://ollama.com/install.sh | sh > /dev/null 2>&1
+    echo "[SETUP] Ollama installed successfully: $(ollama --version 2>&1 | head -n 1)"
+}
+
+function install_vllm() {
+    echo "[SETUP] Installing vLLM high-throughput engine..."
+    pip install -q vllm
+    echo "[SETUP] vLLM installation ready."
+}
+
 case "$MODE" in
     tailscale)
         install_system_tools
         install_tailscale
+        ;;
+    tunnels)
+        install_system_tools
+        install_tailscale
+        install_cloudflared
+        install_vscode_cli
         ;;
     diffusers)
         install_system_tools
@@ -74,14 +103,23 @@ case "$MODE" in
         install_system_tools
         install_comfyui
         ;;
+    ollama)
+        install_system_tools
+        install_ollama
+        ;;
+    vllm)
+        install_system_tools
+        install_vllm
+        ;;
     all)
         install_system_tools
         install_tailscale
         install_cloudflared
+        install_vscode_cli
         install_diffusers_deps
         ;;
     *)
-        echo "Usage: bash scripts/setup.sh [diffusers|comfyui|tailscale|all]"
+        echo "Usage: bash scripts/setup.sh [diffusers|comfyui|ollama|vllm|tunnels|all]"
         exit 1
         ;;
 esac
