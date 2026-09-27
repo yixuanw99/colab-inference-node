@@ -15,7 +15,7 @@ echo "==========================================================================
 function install_system_tools() {
     echo "[SETUP] Updating system apt repositories and core utilities..."
     apt-get update -qq > /dev/null 2>&1 || true
-    apt-get install -y -qq curl wget git jq psmisc > /dev/null 2>&1 || true
+    apt-get install -y -qq curl wget git jq psmisc zstd pciutils > /dev/null 2>&1 || true
 }
 
 function install_tailscale() {

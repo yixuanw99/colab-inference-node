@@ -77,7 +77,7 @@ def chat_loop(endpoint: str, model: str) -> None:
                         choices = chunk.get("choices", [])
                         if choices:
                             delta = choices[0].get("delta", {})
-                            content = delta.get("content", "")
+                            content = delta.get("content", "") or delta.get("reasoning", "") or delta.get("reasoning_content", "")
                             print(content, end="", flush=True)
                             assistant_reply += content
                     except json.JSONDecodeError:

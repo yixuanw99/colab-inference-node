@@ -58,7 +58,7 @@ def run_token_benchmark(endpoint: str, model: str, prompt: str) -> None:
                     choices = chunk.get("choices", [])
                     if choices:
                         delta = choices[0].get("delta", {})
-                        content = delta.get("content", "")
+                        content = delta.get("content", "") or delta.get("reasoning", "") or delta.get("reasoning_content", "")
                         print(content, end="", flush=True)
                         full_text += content
                 except json.JSONDecodeError:
