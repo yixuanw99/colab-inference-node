@@ -37,6 +37,16 @@ class DiffusersPipelineManager(DiffusionEngineInterface):
     def initialize(self, **kwargs: Any) -> None:
         """Initialize runtime and inspect hardware environment."""
         self.last_activity_time = time.time()
+        env_file = Path(__file__).resolve().parents[2] / ".env"
+        if env_file.is_file():
+            for line in env_file.read_text().splitlines():
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    k = k.strip()
+                    if k not in os.environ:
+                        os.environ[k] = v.strip().strip('"').strip("'")
+
         if self.device == "cuda":
             torch.backends.cuda.matmul.allow_tf32 = True
             torch.backends.cudnn.benchmark = True
@@ -117,20 +127,23 @@ class DiffusersPipelineManager(DiffusionEngineInterface):
         hw_info = self._detect_hardware()
         vram_total = hw_info["vram_total_mb"]
 
+        hf_token = os.environ.get("HF_TOKEN")
+        load_kwargs: Dict[str, Any] = {"torch_dtype": target_dtype}
+        if hf_token:
+            load_kwargs["token"] = hf_token
+
         if self.model_family == "flux2":
             from diffusers import Flux2Pipeline
-            load_kwargs: Dict[str, Any] = {"torch_dtype": target_dtype}
             self.pipe = Flux2Pipeline.from_pretrained(model_id, **load_kwargs)
         elif self.model_family == "flux":
             from diffusers import FluxPipeline
-            load_kwargs: Dict[str, Any] = {"torch_dtype": target_dtype}
             self.pipe = FluxPipeline.from_pretrained(model_id, **load_kwargs)
         elif self.model_family == "sdxl":
             from diffusers import StableDiffusionXLPipeline
+            sdxl_kwargs = {**load_kwargs, "use_safetensors": True}
             self.pipe = StableDiffusionXLPipeline.from_pretrained(
                 model_id,
-                torch_dtype=target_dtype,
-                use_safetensors=True,
+                **sdxl_kwargs,
             )
         else:
             from diffusers import AutoPipelineForText2Image
@@ -222,6 +235,9 @@ class DiffusersPipelineManager(DiffusionEngineInterface):
             load_kwargs["weight_name"] = weight_name
         if subfolder:
             load_kwargs["subfolder"] = subfolder
+        hf_token = os.environ.get("HF_TOKEN")
+        if hf_token:
+            load_kwargs["token"] = hf_token
 
         self.pipe.load_lora_weights(lora_id_or_path, **load_kwargs)
         self.pipe.set_adapters([adapter_name], adapter_weights=[weight])
