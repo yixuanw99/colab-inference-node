@@ -5,8 +5,10 @@
 支援跨領域的任意深度學習模型服務：
 - **影像生成與擴散模型（Diffusion）**：**FLUX.1 (schnell/dev)**、**SDXL**、動態 **LoRA** 即時熱插拔與 **ComfyUI** 節點圖。
 - **大型語言模型（LLM）**：**vLLM**（具備 PagedAttention 與 AWQ，提供 OpenAI 相容 API）與 **Ollama**（輕量化 GGUF 格式）。
-- **多模態前瞻介面擴充**：具備 **視覺語言模型（VLM）**、**語音 AI（Audio ASR/TTS）**、**向量嵌入（Embedding）** 與 **視訊生成（Video Diffusion）** 的標準抽象介面。
+- **多模態推論引擎（Multimodal）**：支援 **視覺語言模型（VLM: Qwen2-VL）**、**語音 AI（Audio ASR: Whisper）**、**向量嵌入與語義重排（Embedding & Reranking: BGE-M3, MiniLM）** 與 **視訊擴散生成（Video: CogVideoX）**。
 - **三重穿透網路支援**：**Tailscale Userspace Mesh 私網直連**、**Cloudflare 公網穿透通道** 與 **VS Code Remote Tunnel 遠端開發**。
+
+> 完整詳細的架構技術文件與各模組操作教學請參閱 [**GitHub Wiki 知識庫**](https://github.com/yixuanw99/colab-inference-node/wiki)。
 
 ---
 

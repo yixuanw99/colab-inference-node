@@ -5,8 +5,10 @@ An automated, reproducible remote inference and orchestration infrastructure for
 Serves arbitrary deep learning models across multiple modalities:
 - **Diffusion & Vision**: **FLUX.1 (schnell/dev)**, **SDXL**, dynamic **LoRA** hot-swapping, and **ComfyUI**.
 - **Large Language Models (LLM)**: **vLLM** (PagedAttention, AWQ, OpenAI-compatible) and **Ollama** (lightweight GGUF).
-- **Extensible Modality Contracts**: First-class interfaces for **VLM** (Qwen2-VL), **Audio AI** (Faster-Whisper, F5-TTS), **Embeddings** (BGE-M3), and **Video** (Wan2.1).
+- **Multimodal Engines**: Production implementations for **VLM** (Qwen2-VL), **Audio AI** (Whisper), **Embeddings & Reranking** (BGE-M3, MiniLM), and **Video** (CogVideoX).
 - **Tri-Networking Ingress**: **Tailscale Userspace Mesh**, **Cloudflare Public Tunnels**, and **VS Code Remote Tunnels**.
+
+> Comprehensive documentation and module tutorials are available on the [**GitHub Wiki**](https://github.com/yixuanw99/colab-inference-node/wiki).
 
 ---
 
