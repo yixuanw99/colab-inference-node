@@ -16,6 +16,13 @@ LOG_DIR="$DIR/logs"
 mkdir -p "$LOG_DIR"
 cd "$DIR"
 
+if [ -f "$DIR/.env" ]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "$DIR/.env"
+    set +a
+fi
+
 function detect_hardware() {
     if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi >/dev/null 2>&1; then
         GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader | head -n 1)
