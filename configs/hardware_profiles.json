@@ -1,0 +1,43 @@
+{
+  "profiles": {
+    "cpu": {
+      "name": "CPU Fallback Environment",
+      "vram_mb": 0,
+      "torch_dtype": "float32",
+      "flux_supported": false,
+      "sdxl_supported": true,
+      "offload_strategy": "sequential",
+      "notes": "Testing and diagnostic mode only. Extremely slow for diffusion generation."
+    },
+    "t4": {
+      "name": "NVIDIA Tesla T4",
+      "vram_mb": 15360,
+      "torch_dtype": "float16",
+      "flux_supported": true,
+      "flux_precision": "fp8",
+      "sdxl_supported": true,
+      "offload_strategy": "sequential",
+      "notes": "Standard free/pro Colab tier. FLUX requires FP8 or GGUF quantization with sequential offload."
+    },
+    "l4": {
+      "name": "NVIDIA L4",
+      "vram_mb": 23040,
+      "torch_dtype": "float16",
+      "flux_supported": true,
+      "flux_precision": "fp8",
+      "sdxl_supported": true,
+      "offload_strategy": "model",
+      "notes": "Recommended Colab Pro tier. FLUX runs smoothly in FP8 with model CPU offloading."
+    },
+    "a100": {
+      "name": "NVIDIA A100 (40GB / 80GB)",
+      "vram_mb": 40960,
+      "torch_dtype": "bfloat16",
+      "flux_supported": true,
+      "flux_precision": "bf16",
+      "sdxl_supported": true,
+      "offload_strategy": "none",
+      "notes": "High performance compute unit. Full VRAM residence, unquantized BF16."
+    }
+  }
+}

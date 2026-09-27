@@ -1,0 +1,15 @@
+# Pinned requirements lockfile for colab-model-station
+diffusers>=0.32.0
+transformers>=4.48.0
+accelerate>=1.3.0
+safetensors>=0.4.5
+sentencepiece>=0.2.0
+protobuf>=4.25.0
+peft>=0.14.0
+fastapi>=0.115.0
+uvicorn[standard]>=0.34.0
+pydantic>=2.9.0
+pillow>=10.4.0
+huggingface-hub[hf-transfer]>=0.28.0
+psutil>=5.9.0
+requests>=2.32.0

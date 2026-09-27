@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "version": "1.0.0",
+  "default_model": "black-forest-labs/FLUX.1-schnell",
+  "models": {
+    "black-forest-labs/FLUX.1-schnell": {
+      "name": "FLUX.1 [schnell]",
+      "family": "flux",
+      "pipeline_type": "FluxPipeline",
+      "repo_id": "black-forest-labs/FLUX.1-schnell",
+      "description": "12B parameter rectified flow transformer tailored for 1-4 step high-speed generation.",
+      "license": "apache-2.0",
+      "default_steps": 4,
+      "default_guidance_scale": 0.0,
+      "default_width": 1024,
+      "default_height": 1024,
+      "supports_lora": true,
+      "recommended_hardware": {
+        "t4": {"precision": "fp8", "offload": "sequential", "max_batch": 1},
+        "l4": {"precision": "fp8", "offload": "model", "max_batch": 1},
+        "a100": {"precision": "bf16", "offload": "none", "max_batch": 4}
+      }
+    },
+    "black-forest-labs/FLUX.1-dev": {
+      "name": "FLUX.1 [dev]",
+      "family": "flux",
+      "pipeline_type": "FluxPipeline",
+      "repo_id": "black-forest-labs/FLUX.1-dev",
+      "description": "12B parameter guidance-distilled model offering premier photorealism and typography.",
+      "license": "non-commercial",
+      "gated": true,
+      "default_steps": 28,
+      "default_guidance_scale": 3.5,
+      "default_width": 1024,
+      "default_height": 1024,
+      "supports_lora": true,
+      "recommended_hardware": {
+        "t4": {"precision": "fp8", "offload": "sequential", "max_batch": 1},
+        "l4": {"precision": "fp8", "offload": "model", "max_batch": 1},
+        "a100": {"precision": "bf16", "offload": "none", "max_batch": 2}
+      }
+    },
+    "stabilityai/stable-diffusion-xl-base-1.0": {
+      "name": "Stable Diffusion XL Base 1.0",
+      "family": "sdxl",
+      "pipeline_type": "StableDiffusionXLPipeline",
+      "repo_id": "stabilityai/stable-diffusion-xl-base-1.0",
+      "description": "Flagship 3.5B parameter latent diffusion model with broad community LoRA support.",
+      "license": "openrail++",
+      "default_steps": 30,
+      "default_guidance_scale": 7.5,
+      "default_width": 1024,
+      "default_height": 1024,
+      "supports_lora": true,
+      "recommended_hardware": {
+        "t4": {"precision": "fp16", "offload": "model", "max_batch": 2},
+        "l4": {"precision": "fp16", "offload": "none", "max_batch": 4},
+        "a100": {"precision": "fp16", "offload": "none", "max_batch": 8}
+      }
+    }
+  },
+  "lora_examples": [
+    {
+      "name": "flux-realism-lora",
+      "target_family": "flux",
+      "repo_id": "XLabs-AI/flux-RealismLora",
+      "weight_name": "lora.safetensors",
+      "recommended_scale": 0.85
+    },
+    {
+      "name": "sdxl-offset-lora",
+      "target_family": "sdxl",
+      "repo_id": "neroger/pixel-art-xl",
+      "weight_name": "pixel-art-xl.safetensors",
+      "recommended_scale": 0.80
+    }
+  ]
+}
