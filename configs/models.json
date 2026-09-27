@@ -36,6 +36,20 @@
             "a100": {"precision": "bf16", "offload": "none"}
           }
         },
+        "black-forest-labs/FLUX.2-dev": {
+          "name": "FLUX.2 [dev]",
+          "family": "flux2",
+          "pipeline_type": "Flux2Pipeline",
+          "description": "Next-gen flow transformer with Mistral-3 conditioning.",
+          "license": "non-commercial",
+          "gated": true,
+          "default_steps": 50,
+          "default_guidance_scale": 4.0,
+          "supports_lora": true,
+          "hardware": {
+            "a100": {"precision": "bf16", "offload": "model"}
+          }
+        },
         "stabilityai/stable-diffusion-xl-base-1.0": {
           "name": "Stable Diffusion XL Base 1.0",
           "family": "sdxl",

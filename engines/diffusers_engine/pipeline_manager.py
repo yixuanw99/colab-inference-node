@@ -90,7 +90,9 @@ class DiffusersPipelineManager(DiffusionEngineInterface):
 
         # Determine model family
         model_lower = model_id.lower()
-        if "flux" in model_lower:
+        if "flux.2" in model_lower or "flux2" in model_lower:
+            self.model_family = "flux2"
+        elif "flux" in model_lower:
             self.model_family = "flux"
         elif "xl" in model_lower or "sdxl" in model_lower:
             self.model_family = "sdxl"
@@ -105,7 +107,7 @@ class DiffusersPipelineManager(DiffusionEngineInterface):
             if precision in ("bf16", "bfloat16") or (precision == "auto" and torch.cuda.is_bf16_supported()):
                 target_dtype = torch.bfloat16
                 actual_precision = "bfloat16"
-            elif precision in ("fp8", "float8") and self.model_family == "flux":
+            elif precision in ("fp8", "float8") and self.model_family in ("flux", "flux2"):
                 target_dtype = torch.bfloat16
                 actual_precision = "fp8"
             else:
@@ -115,7 +117,11 @@ class DiffusersPipelineManager(DiffusionEngineInterface):
         hw_info = self._detect_hardware()
         vram_total = hw_info["vram_total_mb"]
 
-        if self.model_family == "flux":
+        if self.model_family == "flux2":
+            from diffusers import Flux2Pipeline
+            load_kwargs: Dict[str, Any] = {"torch_dtype": target_dtype}
+            self.pipe = Flux2Pipeline.from_pretrained(model_id, **load_kwargs)
+        elif self.model_family == "flux":
             from diffusers import FluxPipeline
             load_kwargs: Dict[str, Any] = {"torch_dtype": target_dtype}
             self.pipe = FluxPipeline.from_pretrained(model_id, **load_kwargs)
@@ -137,7 +143,10 @@ class DiffusersPipelineManager(DiffusionEngineInterface):
         applied_offload = offload_strategy
         if self.device == "cuda":
             if offload_strategy == "auto":
-                if vram_total < 18000 and self.model_family == "flux":
+                if self.model_family == "flux2":
+                    self.pipe.enable_model_cpu_offload()
+                    applied_offload = "model"
+                elif vram_total < 18000 and self.model_family == "flux":
                     self.pipe.enable_sequential_cpu_offload()
                     applied_offload = "sequential"
                 elif vram_total < 32000:
