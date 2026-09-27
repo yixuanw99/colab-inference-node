@@ -140,17 +140,55 @@
         }
       }
     },
-    "vlm_planned": {
-      "models": ["Qwen/Qwen2-VL-7B-Instruct", "microsoft/Florence-2-large"]
+    "vlm": {
+      "default_model": "Qwen/Qwen2-VL-2B-Instruct",
+      "models": {
+        "Qwen/Qwen2-VL-2B-Instruct": {
+          "vram_gb": 4.5,
+          "description": "High-efficiency vision-language model for OCR and visual reasoning."
+        },
+        "Qwen/Qwen2-VL-7B-Instruct": {
+          "vram_gb": 16.0,
+          "description": "Flagship 7B multimodal model for document parsing and reasoning."
+        }
+      }
     },
-    "audio_planned": {
-      "models": ["openai/whisper-large-v3", "SWivid/F5-TTS"]
+    "audio": {
+      "default_model": "openai/whisper-tiny",
+      "models": {
+        "openai/whisper-tiny": {
+          "vram_gb": 1.0,
+          "description": "Ultra-fast speech-to-text transcription engine."
+        },
+        "openai/whisper-large-v3": {
+          "vram_gb": 10.0,
+          "description": "High-accuracy multilingual speech recognition."
+        }
+      }
     },
-    "embedding_planned": {
-      "models": ["BAAI/bge-m3", "BAAI/bge-reranker-large"]
+    "embedding": {
+      "default_model": "sentence-transformers/all-MiniLM-L6-v2",
+      "models": {
+        "sentence-transformers/all-MiniLM-L6-v2": {
+          "vram_gb": 0.5,
+          "dimension": 384,
+          "description": "Lightweight dense sentence embedding model (8000+ sent/s)."
+        },
+        "BAAI/bge-m3": {
+          "vram_gb": 2.5,
+          "dimension": 1024,
+          "description": "Multilingual multi-functionality embedding engine."
+        }
+      }
     },
-    "video_planned": {
-      "models": ["Wan-AI/Wan2.1-T2V-1.3B", "THUDM/CogVideoX-2b"]
+    "video": {
+      "default_model": "THUDM/CogVideoX-2b",
+      "models": {
+        "THUDM/CogVideoX-2b": {
+          "vram_gb": 18.0,
+          "description": "High-fidelity 2B parameter text-to-video diffusion model."
+        }
+      }
     }
   }
 }

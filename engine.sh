@@ -164,6 +164,22 @@ for m, v in cats.get('llm', {}).get('vllm', {}).get('models', {}).items():
 print('\n=== LLM Models (Ollama Engine) ===')
 for m, v in cats.get('llm', {}).get('ollama', {}).get('models', {}).items():
     print(f'• {m:<25} | ~{v.get(\"vram_gb\")}GB | {v.get(\"description\", \"\")}')
+
+print('\n=== Vision-Language (VLM) Models ===')
+for m, v in cats.get('vlm', {}).get('models', {}).items():
+    print(f'• {m:<35} | ~{v.get(\"vram_gb\")}GB | {v.get(\"description\", \"\")}')
+
+print('\n=== Audio AI Models ===')
+for m, v in cats.get('audio', {}).get('models', {}).items():
+    print(f'• {m:<35} | ~{v.get(\"vram_gb\")}GB | {v.get(\"description\", \"\")}')
+
+print('\n=== Dense Embedding & Reranker Models ===')
+for m, v in cats.get('embedding', {}).get('models', {}).items():
+    print(f'• {m:<45} | ~{v.get(\"vram_gb\")}GB | {v.get(\"description\", \"\")}')
+
+print('\n=== Video Diffusion Models ===')
+for m, v in cats.get('video', {}).get('models', {}).items():
+    print(f'• {m:<35} | ~{v.get(\"vram_gb\")}GB | {v.get(\"description\", \"\")}')
 "
         ;;
 
