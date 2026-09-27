@@ -162,3 +162,17 @@ bash engine.sh watchdog start --timeout 1800
 bash engine.sh status
 bash engine.sh teardown
 ```
+
+---
+
+## 6. AI Agent 技能封裝與自主運維 (Agent Skill)
+
+`colab-model-station` 內建符合現代自主 AI 程式助手（Google Antigravity、Claude Code、Cursor、OpenCode）標準規範的 **Agent Skill 技能包**：
+
+- **技能核心入口**：[`.agents/skills/colab-model-station/SKILL.md`](.agents/skills/colab-model-station/SKILL.md)
+- **命令列完整規格手冊**：[`.agents/skills/colab-model-station/references/cli_commands.md`](.agents/skills/colab-model-station/references/cli_commands.md)
+- **硬體設定與 VRAM 矩陣**：[`.agents/skills/colab-model-station/references/hardware_profiles.md`](.agents/skills/colab-model-station/references/hardware_profiles.md)
+- **異常排查與除錯手冊**：[`.agents/skills/colab-model-station/references/troubleshooting.md`](.agents/skills/colab-model-station/references/troubleshooting.md)
+- **Claude Code 軟連結相容**：[`.claude/skills/colab-model-station`](.claude/skills/colab-model-station)
+
+任何讀取本儲存庫的 AI 助手或 LLM，皆能透過「漸進式揭露（Progressive Disclosure）」機制自主理解並調用全部模型、執行推論與維護任務，無需人工介入提示。

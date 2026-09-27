@@ -34,6 +34,8 @@ colab-model-station/
 ├── colab_station.ipynb          # Primary interactive deployment notebook (English source of truth)
 ├── colab_station-zh.ipynb       # Mirrored interactive deployment notebook (Traditional Chinese)
 ├── AGENTS.md                    # Autonomous agent operating instructions
+├── .agents/skills/              # Autonomous AI agent skills & progressive runbooks
+│   └── colab-model-station/     # Primary orchestration skill (SKILL.md & references)
 ├── README.md                    # System architecture and deployment guide
 ├── README_zh.md                 # System architecture and deployment guide (Traditional Chinese)
 ├── .env.example                 # Template for local workstation and Colab environment variables

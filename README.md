@@ -163,3 +163,17 @@ bash engine.sh watchdog start --timeout 1800
 bash engine.sh status
 bash engine.sh teardown
 ```
+
+---
+
+## 6. AI Agent Skill & Autonomous Operation
+
+`colab-model-station` includes a native Agent Skill specification complying with modern autonomous coding assistant standards (Google Antigravity, Claude Code, Cursor, OpenCode):
+
+- **Skill Entrypoint**: [`.agents/skills/colab-model-station/SKILL.md`](.agents/skills/colab-model-station/SKILL.md)
+- **CLI Commands Reference**: [`.agents/skills/colab-model-station/references/cli_commands.md`](.agents/skills/colab-model-station/references/cli_commands.md)
+- **Hardware Matrix**: [`.agents/skills/colab-model-station/references/hardware_profiles.md`](.agents/skills/colab-model-station/references/hardware_profiles.md)
+- **Troubleshooting Guide**: [`.agents/skills/colab-model-station/references/troubleshooting.md`](.agents/skills/colab-model-station/references/troubleshooting.md)
+- **Claude Code Symlink**: [`.claude/skills/colab-model-station`](.claude/skills/colab-model-station)
+
+Any LLM or autonomous agent discovering this repository can load this skill via progressive disclosure to autonomously start, stop, serve, benchmark, and troubleshoot models without manual intervention.
