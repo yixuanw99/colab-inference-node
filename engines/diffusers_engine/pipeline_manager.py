@@ -202,7 +202,7 @@ class DiffusersPipelineManager(DiffusionEngineInterface):
         if not self.pipe:
             raise RuntimeError("No active model pipeline loaded. Load a base model first.")
 
-        if self.is_mock:
+        if self.is_mock or lora_id_or_path.startswith("mock://"):
             self.loaded_loras[adapter_name] = {
                 "source": lora_id_or_path,
                 "weight": weight,
@@ -250,7 +250,8 @@ class DiffusersPipelineManager(DiffusionEngineInterface):
         if adapter_name not in self.loaded_loras:
             raise ValueError(f"LoRA adapter '{adapter_name}' is not currently loaded.")
 
-        if self.is_mock:
+        is_mock_lora = self.loaded_loras[adapter_name].get("source", "").startswith("mock://")
+        if self.is_mock or is_mock_lora:
             del self.loaded_loras[adapter_name]
             return {
                 "status": "unloaded",

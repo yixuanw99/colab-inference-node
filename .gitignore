@@ -41,6 +41,10 @@ outputs/
 *.pt
 *.pth
 *.onnx
+*.png
+*.jpg
+*.jpeg
+*.webp
 
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints

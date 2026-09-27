@@ -246,6 +246,10 @@ for m, v in cats.get('llm', {}).get('ollama', {}).get('models', {}).items():
                     echo "[INFO] Stopping Diffusers server (PID: $PID)..."
                     pkill -P "$PID" 2>/dev/null || true
                     kill "$PID" 2>/dev/null || true
+                    sleep 1
+                    if kill -0 "$PID" 2>/dev/null; then
+                        kill -9 "$PID" 2>/dev/null || true
+                    fi
                     rm -f "$PID_FILE"
                     echo "[SUCCESS] Stopped Diffusers server."
                 else
