@@ -62,7 +62,6 @@ def start_comfyui(port: int = 8188, vram_mode: str = "auto") -> None:
         str(comfy_dir / "main.py"),
         "--listen", "127.0.0.1",
         "--port", str(port),
-        "--headless",
         "--preview-method", "none",
     ]
 
