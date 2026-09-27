@@ -433,7 +433,12 @@ for m, v in cats.get('video', {}).get('models', {}).items():
                         tailscale down || true
                         ;;
                     serve)
-                        PORT="${4:-8000}"
+                        PORT="8000"
+                        if [ "${4:-}" == "--port" ] && [ -n "${5:-}" ]; then
+                            PORT="$5"
+                        elif [ -n "${4:-}" ]; then
+                            PORT="$4"
+                        fi
                         echo "[INFO] Proxying port $PORT to Tailscale private mesh..."
                         tailscale serve --bg --tcp "$PORT" "$PORT"
                         tailscale serve status
@@ -448,7 +453,12 @@ for m, v in cats.get('video', {}).get('models', {}).items():
                 ACTION="${3:-up}"
                 case "$ACTION" in
                     up)
-                        PORT="${4:-8000}"
+                        PORT="8000"
+                        if [ "${4:-}" == "--port" ] && [ -n "${5:-}" ]; then
+                            PORT="$5"
+                        elif [ -n "${4:-}" ]; then
+                            PORT="$4"
+                        fi
                         if ! command -v cloudflared > /dev/null 2>&1; then
                             echo "[INFO] Installing cloudflared..."
                             bash "$SCRIPTS_DIR/setup.sh" tunnels

@@ -39,7 +39,7 @@ def is_running(pid: int) -> bool:
         return False
 
 
-def start_comfyui(port: int = 8188, vram_mode: str = "auto") -> None:
+def start_comfyui(port: int = 8188, listen: str = "0.0.0.0", vram_mode: str = "auto") -> None:
     """Launch ComfyUI in headless background mode."""
     LOG_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -60,9 +60,10 @@ def start_comfyui(port: int = 8188, vram_mode: str = "auto") -> None:
     cmd = [
         sys.executable,
         str(comfy_dir / "main.py"),
-        "--listen", "127.0.0.1",
+        "--listen", listen,
         "--port", str(port),
-        "--preview-method", "none",
+        "--enable-cors-header", "*",
+        "--preview-method", "auto",
     ]
 
     if vram_mode == "low":
@@ -133,6 +134,7 @@ def main():
 
     start_p = subparsers.add_parser("start")
     start_p.add_argument("--port", type=int, default=8188)
+    start_p.add_argument("--listen", type=str, default="0.0.0.0", help="IP address to listen on (default: 0.0.0.0)")
     start_p.add_argument("--vram", choices=["auto", "low", "high"], default="auto")
 
     subparsers.add_parser("stop")
@@ -140,7 +142,7 @@ def main():
 
     args = parser.parse_args()
     if args.command == "start":
-        start_comfyui(port=args.port, vram_mode=args.vram)
+        start_comfyui(port=args.port, listen=args.listen, vram_mode=args.vram)
     elif args.command == "stop":
         stop_comfyui()
     elif args.command == "status":
