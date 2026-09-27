@@ -439,8 +439,9 @@ for m, v in cats.get('video', {}).get('models', {}).items():
                         elif [ -n "${4:-}" ]; then
                             PORT="$4"
                         fi
-                        echo "[INFO] Proxying port $PORT to Tailscale private mesh..."
-                        tailscale serve --bg --tcp "$PORT" "$PORT"
+                        echo "[INFO] Proxying port $PORT to Tailscale private mesh via HTTP reverse proxy..."
+                        tailscale serve reset > /dev/null 2>&1 || true
+                        tailscale serve --bg --http="$PORT" "$PORT"
                         tailscale serve status
                         ;;
                     status)
